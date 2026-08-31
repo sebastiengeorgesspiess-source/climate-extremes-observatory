@@ -4,6 +4,8 @@ An interactive country-level physical-climate evidence system by Sebastien Spies
 
 Live application: https://sebastienspiess.ch/climate/
 
+Archived release: https://doi.org/10.5281/zenodo.22175808
+
 ## Scope
 
 The observatory separates observed physical climate, scenario-conditioned projections and model uncertainty. It does not calculate a composite climate-risk score, attribute individual events automatically, or combine physical change with social vulnerability. Human-system consequences belong to the separate Humanity Futures Observatory.
@@ -29,5 +31,4 @@ Missing values are retained as missing. National aggregates must not be interpre
 
 ## Citation
 
-Spiess, Sebastien (2026). Climate Extremes & Earth System Observatory, version 2.0.0. Zenodo.
-
+Spiess, Sebastien (2026). Climate Extremes & Earth System Observatory, version 2.0.0. Zenodo. https://doi.org/10.5281/zenodo.22175808
