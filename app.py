@@ -233,6 +233,7 @@ def build():
   {'name':'NOAA NCEI Ocean Heat Content','measure':'Global 0–2,000 m ocean heat-content anomaly','url':'https://www.ncei.noaa.gov/products/climate-data-records/global-ocean-heat-content'},
   {'name':'IPCC AR6 WGI','measure':'Sea level, cryosphere and assessed future ranges','url':'https://www.ipcc.ch/report/ar6/wg1/'},
   {'name':'WMO State of the Global Climate','measure':'Glacier loss, ocean and extreme-event synthesis','url':'https://public.wmo.int/publication-series/state-of-global-climate/state-of-global-climate-2025'},
+  {'name':'Zenodo release 2.0.0','measure':'Archived source, methods, manifest and independent-review protocol · DOI 10.5281/zenodo.22175808','url':'https://doi.org/10.5281/zenodo.22175808'},
   {'name':'HFO CMIP6 ensemble','measure':'Country heat-day projections with p10–p90 spread','url':'/hfo/'}],
   'method_note':'Observed annual indicators retain their native baselines, units and uncertainty fields. They are not combined into a score. Co-movement is not proof of causation.'}
 
