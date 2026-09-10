@@ -1,4 +1,8 @@
-# Climate Extremes & Earth System Observatory 2.0.0
+# Climate Extremes & Earth System Observatory 2.1.0
+
+## 10 September 2026 · 2.1.0
+
+See [the dated release notes](RELEASE-20260910.md) for the reviewed changes and verification. Zenodo archival updates are pending; existing DOI links identify their older archived versions, not this source update.
 
 An interactive country-level physical-climate evidence system by Sebastien Spiess.
 

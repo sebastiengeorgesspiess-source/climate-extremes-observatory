@@ -1,13 +1,12 @@
 cff-version: 1.2.0
-message: "If you use this software, please cite the software and the source datasets documented in the evidence registry."
+message: "Cite this source version by its GitHub commit. The older Zenodo DOI remains documented in README.md; a new archived version is pending."
 title: "Climate Extremes & Earth System Observatory"
 type: software
-version: 2.0.0
-date-released: 2026-08-29
+version: 2.1.0
+date-released: 2026-09-10
 authors:
   - family-names: Spiess
     given-names: Sebastien
-doi: 10.5281/zenodo.22175808
 repository-code: "https://github.com/sebastiengeorgesspiess-source/climate-extremes-observatory"
 url: "https://sebastienspiess.ch/climate/"
 license: MIT

@@ -1,5 +1,9 @@
 # Changelog
 
+## 10 September 2026 · 2.1.0
+
+See [the dated release notes](RELEASE-20260910.md) for the reviewed changes and verification. Zenodo archival updates are pending; existing DOI links identify their older archived versions, not this source update.
+
 ## 2.0.0 — 2026-08-30
 
 - Added country climate profiles using ERA5 annual series.
