@@ -16,7 +16,7 @@ SOURCES={
  'sea_ice':'https://noaadata.apps.nsidc.org/NOAA/G02135/north/monthly/data/N_09_extent_v4.0.csv',
  'ocean_heat':'https://www.ncei.noaa.gov/data/oceans/woa/DATA_ANALYSIS/3M_HEAT_CONTENT/DATA/basin/yearly/h22-w0-2000m.dat'}
 
-def text(url,timeout=70):
+def text(url,timeout=25):
  r=requests.get(url,headers=UA,timeout=timeout); r.raise_for_status(); return r.text
 
 def temperature():
@@ -73,7 +73,7 @@ def regional_intelligence():
   if not geo: continue
   mid=record['scenarios']['ssp245']['2040-2059']; high=record['scenarios']['ssp585']['2080-2099']
   population=pop.get('timeline',{}).get('2050',{}).get('Medium')
-  rows.append({'iso3':iso,'name':geo['name'],'region':geo['region'],'lat':geo['lat'],'lon':geo['lon'],'heat_2050':mid['median'],'heat_2050_p10':mid['p10'],'heat_2050_p90':mid['p90'],'heat_2100_high':high['median'],'population_2050_m':population})
+  rows.append({'iso3':iso,'name':geo['name'],'region':geo['region'],'lat':geo['lat'],'lon':geo['lon'],'heat_2050':mid['median'],'heat_2050_p10':mid['p10'],'heat_2050_p90':mid['p90'],'heat_2100_high':high['median'],'population_2050_m':population,'heat_scenarios':record['scenarios']})
  rows.sort(key=lambda x:x['heat_2100_high'],reverse=True)
  regions={}
  for row in rows:
@@ -82,10 +82,41 @@ def regional_intelligence():
  for name,items in regions.items():
   region_rows.append({'name':name,'countries':len(items),'heat_2050':round(statistics.mean(x['heat_2050'] for x in items),1),'heat_2100_high':round(statistics.mean(x['heat_2100_high'] for x in items),1)})
  region_rows.sort(key=lambda x:x['heat_2100_high'],reverse=True)
- return rows,region_rows
+ metadata=hfo.get('heat',{}).get('metadata',{})
+ if metadata.get('variable')!='hd35': raise ValueError('Unexpected heat indicator; do not relabel unknown data')
+ return rows,region_rows,metadata
+
+def parse_sea_level(raw):
+ if 'centimeters' not in raw or 'GIA not applied' not in raw or '99900' not in raw: raise ValueError('Sea-level format changed')
+ rows=[]
+ for line in raw.splitlines():
+  if line.startswith('HDR') or not line.strip(): continue
+  p=line.split()
+  if len(p)!=6: raise ValueError('Unexpected sea-level columns')
+  year,value=float(p[0]),float(p[1])
+  if value==99900: continue
+  if not math.isfinite(value) or not 1993<=year<datetime.now(timezone.utc).year+1 or abs(value)>100: raise ValueError('Invalid measured sea level')
+  rows.append({'year_decimal':year,'value_cm':value})
+ if len(rows)<100 or any(b['year_decimal']<=a['year_decimal'] for a,b in zip(rows,rows[1:])): raise ValueError('Incomplete or unordered sea level')
+ baseline=[r['value_cm'] for r in rows if int(r['year_decimal'])==1993]
+ if len(baseline)<40: raise ValueError('Missing 1993 baseline')
+ reference=statistics.mean(baseline)
+ for r in rows:r['value_cm']=round(r['value_cm']-reference,4)
+ return rows,reference
+
+def sea_level_record():
+ r=requests.get('https://zenodo.org/api/records/7702315/versions/latest',headers=UA,timeout=15);r.raise_for_status();record=r.json()
+ files=[f for f in record.get('files',[]) if f['key'].startswith('GMSL_extrap_') and f['key'].endswith('.txt')]
+ if len(files)!=1: raise ValueError('Sea-level publication requires review')
+ f=files[0];url=f['links']['self']
+ if not url.startswith('https://zenodo.org/api/records/'): raise ValueError('Unexpected source host')
+ response=requests.get(url,headers=UA,timeout=25);response.raise_for_status()
+ if f.get('checksum')!='md5:'+hashlib.md5(response.content).hexdigest(): raise ValueError('Source checksum mismatch')
+ rows,reference=parse_sea_level(response.text)
+ return {'rows':rows,'status':'ok','last_success':datetime.now(timezone.utc).isoformat(),'source_url':url,'record_url':f'https://zenodo.org/records/{record["id"]}','version':record.get('metadata',{}).get('version'),'sha256':hashlib.sha256(response.content).hexdigest(),'unit':'cm','baseline':'1993 average of published smoothed samples','source_baseline_cm':reference,'uncertainty':None,'method':'NASA/JPL NASA-SSH satellite record, smoothed over 60 days; measured column 2 only. Converted to change from the 1993 sample average. No glacial-isostatic adjustment (GIA), a correction for slow land and ocean-basin movement. The file provides no pointwise measurement uncertainty; no uncertainty band is invented. Quadratic fits and extrapolations are excluded. This is global mean sea level, not local coastal flood height.'}
 
 def get_json_local(url):
- r=requests.get(url,timeout=45,headers=UA);r.raise_for_status();return r.json()
+ r=requests.get(url,timeout=15,headers=UA);r.raise_for_status();return r.json()
 
 def cckp(url):
  r=requests.get(url,timeout=90,headers=UA); r.raise_for_status()
@@ -252,12 +283,24 @@ def build():
    if not previous.get('series',{}).get(key): raise
    series[key]=previous['series'][key]
    source_status[key]={'last_success':previous.get('source_status',{}).get(key,{}).get('last_success',previous.get('generated_at')),'status':'cached','url':SOURCES[key]}
- countries,regions=regional_intelligence(); events=climate_relevant_events()
+ try:
+  countries,regions,heat_metadata=regional_intelligence()
+  regional_status={'status':'ok','last_success':datetime.now(timezone.utc).isoformat()}
+ except Exception:
+  countries=previous.get('countries',[]); regions=previous.get('regions',[]); heat_metadata=previous.get('heat_metadata',{})
+  regional_status={'status':'cached' if heat_metadata else 'unavailable','last_success':previous.get('regional_status',{}).get('last_success')}
+ events=climate_relevant_events()
+ try:
+  sea_level=sea_level_record()
+  old_sea=previous.get('sea_level',{}).get('rows',[])
+  if old_sea and sea_level['rows'][-1]['year_decimal']<old_sea[-1]['year_decimal']: raise ValueError('Sea-level coverage regression')
+ except Exception:
+  sea_level=dict(previous.get('sea_level',{}));sea_level['status']='cached' if sea_level.get('rows') else 'unavailable'
  latest={k:v[-1] for k,v in series.items()}
  baseline=[x['value'] for x in series['temperature'] if 1951<=x['year']<=1980]
  latest['temperature']['baseline_note']='NASA anomaly relative to 1951–1980'; latest['temperature']['rank']=rank(series['temperature'])
  latest['co2']['rank']=rank(series['co2']); latest['sea_ice']['rank']=rank(series['sea_ice'],False); latest['ocean_heat']['rank']=rank(series['ocean_heat'])
- return {'generated_at':datetime.now(timezone.utc).isoformat(),'source_status':source_status,'series':series,'latest':latest,'baseline_mean':round(statistics.mean(baseline),3),'countries':countries,'regions':regions,'events':events,'outlook':{
+ return {'generated_at':datetime.now(timezone.utc).isoformat(),'sea_level':sea_level,'source_status':source_status,'heat_metadata':heat_metadata,'regional_status':regional_status,'series':series,'latest':latest,'baseline_mean':round(statistics.mean(baseline),3),'countries':countries,'regions':regions,'events':events,'outlook':{
   'sea_level_2050':{'low':0.15,'high':0.29,'unit':'m','baseline':'1995–2014','range_type':'likely ranges across SSP1–1.9 to SSP5–8.5'},
   'sea_level_2100_low':{'median':0.38,'low':0.28,'high':0.55,'scenario':'SSP1–1.9'},
   'sea_level_2100_high':{'median':0.77,'low':0.63,'high':1.01,'scenario':'SSP5–8.5'},
@@ -285,7 +328,7 @@ def index():
 def data(): return jsonify(load())
 @app.get('/api/health')
 def health():
- p=load(); stale=age_seconds(p.get('generated_at'))>48*3600; degraded=stale or any(x.get('status')!='ok' for x in p.get('source_status',{}).values())
+ p=load(); stale=age_seconds(p.get('generated_at'))>48*3600; degraded=stale or any(x.get('status')!='ok' for x in p.get('source_status',{}).values()) or p.get('sea_level',{}).get('status')!='ok' or p.get('regional_status',{}).get('status')!='ok'
  return jsonify(status='degraded' if degraded else 'ok',updated_at=p['generated_at'],stale=stale,source_status=p.get('source_status',{}),series=len(p['series']))
 @app.post('/api/refresh')
 def api_refresh():
@@ -304,7 +347,7 @@ def country_json(iso): return jsonify(country_profile(iso))
 def country_csv(iso):
  p=country_profile(iso); out=io.StringIO(); w=csv.writer(out); w.writerow(['iso3','country','evidence_type','variable','scenario','period','percentile','year','value','unit'])
  for var,rows in p['observed'].items():
-  for row in rows:w.writerow([p['iso3'],p['name'],'observed ERA5',var,'historical','','mean',row['year'],row['value'],p['variables'][var]['unit']])
+  for row in rows:w.writerow([p['iso3'],p['name'],'ERA5 historical reanalysis estimate',var,'historical','','mean',row['year'],row['value'],p['variables'][var]['unit']])
  for var,scenarios in p['projections'].items():
   for scenario,years in scenarios.items():
    for year,vals in years.items():
@@ -316,5 +359,5 @@ def citation_bib(iso):
  bib=f'@dataset{{{key},\n  author = {{Spiess, Sebastien}},\n  title = {{{p["name"]} Climate Profile}},\n  year = {{{datetime.now().year}}},\n  url = {{https://sebastienspiess.ch/climate/}},\n  note = {{ERA5, bias-corrected CMIP6 and NASA PyGEM-OGGM data via World Bank CCKP; accessed {p["evidence"]["accessed"]}}}\n}}\n'
  return Response(bib,mimetype='application/x-bibtex',headers={'Content-Disposition':f'attachment; filename=climate-{iso.upper()}.bib'})
 @app.get('/api/changelog')
-def changelog(): return jsonify(version='2.1.0',released='2026-09-10',changes=['Reader-friendly terminology and emissions-pathway explanations','IPCC very-likely temperature ranges labelled as 2081–2100 averages','Official completed-September sea-ice series from 1979','Independent global-source fallback and retrieval-status metadata','Country cache renews in the background after seven days, preserving prior data if refresh fails','Country projection baseline explicitly 1995–2014; historical chart axes and annual data table','Glacier source index verified: year 2000 equals 100','Sea-level export ranges aligned with the published assessment','Print/PDF control removed from this dashboard; data downloads retained'])
+def changelog(): return jsonify(version='2.2.0',released='2026-09-11',changes=['Corrected overview heat threshold: source hd35, daily maximum at least 35 degrees C, not 30','Independent heat period and pathway selectors; same-period comparisons with model ranges','Daily source status per indicator and retained-data warnings','NASA/JPL measured sea-level series; excludes fits and extrapolations; no invented uncertainty band','Historical ERA5 exports labelled reanalysis estimates','Explained different low-emissions pathways and heat thresholds; shorter reader guidance'])
 if __name__=='__main__':app.run(host='127.0.0.1',port=8093)

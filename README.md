@@ -1,8 +1,8 @@
-# Climate Extremes & Earth System Observatory 2.1.0
+# Climate Extremes & Earth System Observatory 2.2.0
 
-## 10 September 2026 · 2.1.0
+## 11 September 2026 · 2.2.0
 
-See [the dated release notes](RELEASE-20260910.md) for the reviewed changes and verification. Zenodo archival updates are pending; existing DOI links identify their older archived versions, not this source update.
+See [the dated release notes](RELEASE-20260911.md) for the reviewed changes and verification. Zenodo archival updates are pending; existing DOI links identify their older archived versions, not this source update.
 
 An interactive country-level physical-climate evidence system by Sebastien Spiess.
 
@@ -27,7 +27,7 @@ Missing values are retained as missing. National aggregates must not be interpre
 
 - `app.py`: server-side data retrieval, caching and export logic
 - `templates/intelligence.html`: application interface
-- `static/country-profile.js`: country-profile interaction and rendering
+- `static/country-profile-v3.js`: country-profile interaction and rendering
 - `METHODS.md`: scientific design and limitations
 - `PEER_REVIEW_PROTOCOL.md`: independent review checklist
 - `CHANGELOG.md`: release history
@@ -36,3 +36,7 @@ Missing values are retained as missing. National aggregates must not be interpre
 ## Citation
 
 Spiess, Sebastien (2026). Climate Extremes & Earth System Observatory, version 2.0.0. Zenodo. https://doi.org/10.5281/zenodo.22175808
+
+## Source archive boundaries
+
+Shared site assets and external datasets are not bundled. Use your own restricted browser map key where `YOUR_CARTO_BROWSER_KEY` appears. The DOI above identifies the older 2.0.0 archive, not this 2.2.0 source. The measured sea-level addition and its transformation are described in the dated release notes.

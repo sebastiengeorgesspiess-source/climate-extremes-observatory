@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.2.0 — 2026-09-11
+
+Corrected country-heat indicator labels, added measured sea level with checksum-checked daily retrieval, and exposed source freshness. See [release notes](RELEASE-20260911.md).
+
 ## 10 September 2026 · 2.1.0
 
 See [the dated release notes](RELEASE-20260910.md) for the reviewed changes and verification. Zenodo archival updates are pending; existing DOI links identify their older archived versions, not this source update.
